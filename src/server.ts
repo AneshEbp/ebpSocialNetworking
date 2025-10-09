@@ -32,8 +32,12 @@ app.get("/", (req, res) => {
 });
 
 import connectToMongoDb from "./config/db.js";
+
 import authRoutes from "./routes/auth.route.js";
 app.use("/auth", authRoutes);
+
+import userRoute from"./routes/user.route.js"
+app.use("/user", userRoute);
 
 // app.listen(PORT, async () => {
 //   try {

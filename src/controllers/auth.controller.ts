@@ -153,4 +153,78 @@ const changePassword = async (req: Request, res: Response) => {
   }
 };
 
-export { register, login, changePassword };
+const generateResetToken = async (userId: string) => {
+  const token = jwt.sign(
+    { id: userId },
+    process.env.JWT_SECRET || "your_jwt_secret",
+    {
+      expiresIn: "1h",
+    }
+  );
+  return token;
+};
+
+const sendResetEmail = async (email: string, token: string) => {
+  const resetLink = `http://localhost:3000/reset-password?token=${token}`;
+  // Send the email using your preferred email service
+  console.log(
+    `Sending password reset email to ${email} with link: ${resetLink}`
+  );
+};
+
+const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    console.log(`Received password reset request for email: ${email}`);
+    if (!validator.isEmail(email)) {
+      return res.send("invalid email");
+    }
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.send("user not found");
+    }
+    if (!user._id) {
+      return res.status(500).send("User password not set.");
+    }
+    if (user.resetPasswordToken != null) {
+      return res.send("password reset token already exists");
+    }
+    // Generate a password reset token and send it to the user's email
+    const token = await generateResetToken((user._id).toString());
+    user.resetPasswordToken = token;
+    await user.save();
+    await sendResetEmail(email, token);
+    return res.send("password reset email sent");
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send("internal server error");
+  }
+};
+
+const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token && !newPassword) {
+      return res.status(400).send("token and new password are required");
+    }
+    const payload = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "your_jwt_secret"
+    );
+    if (!payload) {
+      return res.status(401).send("invalid token");
+    }
+    const user = await User.findById((payload as { id: string }).id);
+    if (!user) {
+      return res.status(404).send("user not found");
+    }
+    user.password = await hashedPassword(newPassword);
+    await user.save();
+    return res.send("password reset successfully");
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send("internal server error");
+  }
+};
+
+export { register, login, changePassword, forgotPassword, resetPassword };

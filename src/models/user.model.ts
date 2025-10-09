@@ -7,12 +7,34 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    require: true,
-    unique:true,
+    required: true,
+    unique: true,
   },
   password: {
     type: String,
-    require: true,
+    required: true,
+  },
+  hobbies: {
+    type: [String],
+    default: [],
+  },
+  dateOfBirth: {
+    type: String,
+    default: null,
+  },
+  academicQualification: {
+    type: [
+      {
+        passedYear: { type: Number },
+        degreeName: { type: String },
+      },
+    ],
+    default: [],
+  },
+  resetPasswordToken: {
+    type: String,
+    default: null,
+    expires: "1h",
   },
 });
 
