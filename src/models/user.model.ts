@@ -1,6 +1,24 @@
-import mongoose from "mongoose";
+import mongoose, { Types } from "mongoose";
 
-const userSchema = new mongoose.Schema({
+interface IUser extends mongoose.Document {
+  name: string;
+  email: string;
+  password: string;
+  hobbies: string[];
+  dateOfBirth?: string | null;
+  location: { type: "Point"; coordinates: [number, number] };
+  followers: string[];
+  following: string[];
+  academicQualification: {
+    passedYear?: number;
+    degreeName?: string;
+  }[];
+  resetPasswordToken?: string | null;
+  loginIp?: string[];
+  whitelist?: string[];
+}
+
+const userSchema = new mongoose.Schema<IUser>({
   name: {
     type: String,
     required: true,
@@ -22,6 +40,26 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  location: {
+    type: {
+      type: String,
+      enum: ["Point"],
+    },
+    coordinates: {
+      type: [Number],
+      index: "2dsphere",
+    },
+  },
+  followers: {
+    type: [Types.ObjectId],
+    ref: "Users",
+    default: [],
+  },
+  following: {
+    type: [Types.ObjectId],
+    ref: "Users",
+    default: [],
+  },
   academicQualification: {
     type: [
       {
@@ -34,8 +72,15 @@ const userSchema = new mongoose.Schema({
   resetPasswordToken: {
     type: String,
     default: null,
-    expires: "1h",
   },
+  loginIp: {
+    type: [String],
+    default: [],
+  },
+  whitelist: {
+    type: [String],
+    default: [],
+  }
 });
 
 const User = mongoose.model("Users", userSchema);

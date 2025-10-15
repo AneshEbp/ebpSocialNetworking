@@ -1,10 +1,10 @@
 import type { Request, Response } from "express";
 import User from "../models/user.model.js";
-import type { ObjectId } from "mongodb";
+import { Types } from "mongoose";
 
 export const getUserProfile = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId: Types.ObjectId = req.user?.id;
     if (!userId) {
       return res.status(401).send("user not found");
     }
@@ -20,106 +20,272 @@ export const getUserProfile = async (req: Request, res: Response) => {
 };
 
 export const updateHobbies = async (req: Request, res: Response) => {
-    try{
-        const {hobbies}: {hobbies: Array<string>} = req.body;
-        console.log(hobbies);
-        const userId = req.user?.id;
-        if(!userId){
-            return res.status(401).send("user not found");
-        }
-        const user = await User.findById(userId);
-        if(!user){
-            return res.status(404).send("user not found");
-        }
-        if(user.hobbies==null){
-            user.hobbies = hobbies;
-        }else{
-            user.hobbies.push(...hobbies);
-        }
-        await user.save();
-        return res.json({ user });
-    }catch(err){
-        console.log(err);
-        return res.status(500).send("internal server error");
+  try {
+    const { hobbies }: { hobbies: Array<string> } = req.body;
+    console.log(hobbies);
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).send("user not found");
     }
-}
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).send("user not found");
+    }
+    if (user.hobbies == null) {
+      user.hobbies = hobbies;
+    } else {
+      user.hobbies.push(...hobbies);
+    }
+    await user.save();
+    return res.json({ user });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send("internal server error");
+  }
+};
+
 export const deleteHobby = async (req: Request, res: Response) => {
-    try {
-        const { hobby }: { hobby: string } = req.body;
-        const userId = req.user?.id;
-        if (!userId) {
-            return res.status(401).send("user not found");
-        }
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).send("user not found");
-        }
-        user.hobbies = user.hobbies.filter(h => h !== hobby);
-        await user.save();
-        return res.json({ user });
-    } catch (err) {
-        console.log(err);
-        return res.status(500).send("internal server error");
+  try {
+    const { hobby }: { hobby: string } = req.body;
+    console.log(hobby);
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).send("user not found");
     }
-}
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).send("user not found");
+    }
+    console.log(user.hobbies);
+    user.hobbies = user.hobbies.filter((h) => h !== hobby);
+    await user.save();
+    return res.json({ user });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send("internal server error");
+  }
+};
 
 export const updateDateOfBirth = async (req: Request, res: Response) => {
-    try{
-        const {dateOfBirth}: {dateOfBirth: string} = req.body;
-        const userId = req.user?.id;
-        if(!userId){
-            return res.status(401).send("user not found");
-        }
-        const user = await User.findById(userId);
-        if(!user){
-            return res.status(404).send("user not found");
-        }
-        user.dateOfBirth = dateOfBirth;
-        await user.save();
-        return res.json({ user , message:"Date of birth updated successfully"});
-    }catch(err){
-        console.log(err);
-        return res.status(500).send("internal server error");
+  try {
+    const { dateOfBirth }: { dateOfBirth: string } = req.body;
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).send("user not found");
     }
-}
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).send("user not found");
+    }
+    user.dateOfBirth = dateOfBirth;
+    await user.save();
+    return res.json({ user, message: "Date of birth updated successfully" });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send("internal server error");
+  }
+};
 
-export const deleteAcademicQualification = async (req: Request, res: Response) => {
-    try {
-        const { degreeId }: { degreeId: ObjectId } = req.body;
-        const userId = req.user?.id;
-        if (!userId) {
-            return res.status(401).send("user not found");
-        }
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).send("user not found");
-        }
-        user.academicQualification.pull({ _id: degreeId });
-        await user.save();
-        return res.json({ user });
-    } catch (err) {
-        console.log(err);
-        return res.status(500).send("internal server error");
+export const updateAcademicQualification = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const {
+      academicQualification,
+    }: {
+      academicQualification: Array<{ passedYear: number; degreeName: string }>;
+    } = req.body;
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).send("user not found");
     }
-}
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).send("user not found");
+    }
+    user.academicQualification.push(...academicQualification);
+    await user.save();
+    return res.json({
+      user,
+      message: "Academic qualification updated successfully",
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send("internal server error");
+  }
+};
 
-export const updateAcademicQualification = async (req: Request, res: Response) => {
-    try{
-        const {academicQualification}: {academicQualification: Array<{passedYear: number, degreeName: string}>} = req.body;
-        const userId = req.user?.id;
-        if(!userId){
-            return res.status(401).send("user not found");
-        }
-        const user = await User.findById(userId);
-        if(!user){
-            return res.status(404).send("user not found");
-        }
-        user.academicQualification.push(...academicQualification);
-        await user.save();
-        return res.json({ user , message:"Academic qualification updated successfully"});
-    }catch(err){
-        console.log(err);
-        return res.status(500).send("internal server error");
+export const deleteAcademicQualification = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { degreeName }: { degreeName: string } = req.body;
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).send("user not found");
     }
-}
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).send("user not found");
+    }
+    user.academicQualification = user.academicQualification.filter(
+      (qual) => qual.degreeName !== degreeName
+    );
+    await user.save();
+    return res.json({ user });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send("internal server error");
+  }
+};
+
+export const updateLocation = async (req: Request, res: Response) => {
+  try {
+    const {
+      location,
+    }: { location: { type: "Point"; coordinates: [number, number] } } =
+      req.body;
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).send("user not found");
+    }
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).send("user not found");
+    }
+    user.location = location;
+    await user.save();
+    return res.json({ user, message: "Location updated successfully" });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send("internal server error");
+  }
+};
+
+export const followUser = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { followUserId } = req.body;
+
+    if (!userId || !followUserId) {
+      return res.status(401).send("User not found");
+    }
+
+    const user = await User.findById(userId);
+    const followuser = await User.findById(followUserId);
+
+    if (!user || !followuser) {
+      return res.status(404).send("User not found");
+    }
+
+    if (user?.following.includes(followUserId)) {
+      return res.status(400).send("You are already following this user");
+    }
+    user.following.push(followUserId);
+    followuser.followers.push(userId);
+
+    const userSaveResult = await user.save();
+    const followuserSaveResult = await followuser.save();
+
+    if (!userSaveResult || !followuserSaveResult) {
+      return res.status(500).send("Internal server error");
+    }
+
+    return res.json({ message: `You are now following ${followuser.name}` });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send("Internal server error");
+  }
+};
+
+export const unfollowUser = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { unfollowUserId } = req.body;
+
+    if (!userId || !unfollowUserId) {
+      return res.status(401).send("Userid not found");
+    }
+
+    const user = await User.findById(userId);
+    const unfollowUser = await User.findById(unfollowUserId);
+
+    if (!user || !unfollowUser) {
+      return res.status(404).send("UserDetails not found");
+    }
+
+    if (!user?.following.includes(unfollowUserId)) {
+      return res.status(400).send("You are not following this user");
+    }
+
+    user.following = user.following.filter(
+      (id) => id.toString() !== unfollowUserId
+    );
+    unfollowUser.followers = unfollowUser.followers.filter(
+      (id) => id.toString() !== userId
+    );
+
+    const userSaveResult = await user.save();
+    const unfollowUserSaveResult = await unfollowUser.save();
+
+    console.log("User unfollowed:", userSaveResult);
+    console.log("User following updated:", unfollowUserSaveResult);
+    if (!userSaveResult || !unfollowUserSaveResult) {
+      return res.status(500).send("Internal server error");
+    }
+    return res.json({ message: "Unfollowed user successfully" });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send("Internal server error");
+  }
+};
+
+export const getFollowers = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).send("User not found");
+    }
+
+    const followersResult = await User.findById(userId, {
+      _id: 0,
+      followers: 1,
+    }).populate("followers", "_id name");
+    if (!followersResult) {
+      return res.status(404).send("User not found");
+    }
+
+    return res.json({
+      followers: followersResult,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send("Internal server error");
+  }
+};
+
+export const getFollowing = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).send("User not found");
+    }
+
+    const followingResult = await User.findById(userId, {
+      _id: 0,
+      following: 1,
+    }).populate("following", "_id name");
+
+    if (!followingResult) {
+      return res.status(404).send("User not found");
+    }
+
+    return res.json({ following: followingResult });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send("Internal server error");
+  }
+};
 

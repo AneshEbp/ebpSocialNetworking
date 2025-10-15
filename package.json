@@ -1,7 +1,7 @@
 {
-  "name": "ebpsocialnetworking",
+  "name": "socialnetworkingapi",
   "version": "1.0.0",
-  "description": "",
+  "description": "**Edit a file, create a new file, and clone from Bitbucket in under 2 minutes**",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -19,6 +19,7 @@
     "@types/cors": "^2.8.19",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mongoose": "^5.11.96",
+    "@types/multer": "^2.0.0",
     "@types/node": "^24.7.0",
     "@types/validator": "^13.15.3",
     "bcrypt": "^6.0.0",
@@ -33,7 +34,9 @@
     "express": "^5.1.0",
     "mongodb": "^6.20.0",
     "mongoose": "^8.19.1",
+    "multer": "^2.0.2",
     "nodemon": "^3.1.10",
+    "uuid": "^13.0.0",
     "validator": "^13.15.15"
   }
 }
