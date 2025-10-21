@@ -12,12 +12,12 @@ interface IMessage {
 const messageSchema: mongoose.Schema<IMessage> = new mongoose.Schema<IMessage>({
   senderId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    ref: "Users",
     required: true,
   },
   receiverId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    ref: "Users",
     required: true,
   },
   conversationId: {

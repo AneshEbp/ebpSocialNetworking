@@ -4,6 +4,47 @@ import validator from "validator";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
+import nodemailer from "nodemailer";
+import hbs from "nodemailer-express-handlebars";
+
+const sendMail = async (to: string, subject: string, template: string, context: {}) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.APP_EMAIL,
+        pass: process.env.APP_PASS,
+      },
+    });
+
+    const hbsOptions = {
+      viewEngine: {
+        extname: ".hbs",
+        partialsDir: "./views/partials",
+        layoutsDir: "./views/layouts",
+      },
+      viewPath: "./views",
+      extName: ".handlebars",
+    };
+
+    transporter.use("compile", hbs(hbsOptions));
+
+    const mailOptions = {
+      from: process.env.APP_EMAIL,
+      to,
+      subject,
+      template: `${template}`,
+      context: context,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("Email sent successfully");
+  } catch (error) {
+    console.error("Error sending email:", error);
+  }
+};
 
 const isExistingUser = async (email: string): Promise<boolean> => {
   try {
@@ -38,6 +79,9 @@ const comparePassword = async (
     return false;
   }
 };
+const generateVerificationCode = (): Number => {
+  return Math.floor(100000 + Math.random() * 900000);
+};
 
 const register = async (req: Request, res: Response) => {
   try {
@@ -61,17 +105,97 @@ const register = async (req: Request, res: Response) => {
       return res.send("user with email already exists");
     }
     const hashedPwd = await hashedPassword(password);
+    const verificationCode = generateVerificationCode();
     const registerUser = new User({
       name,
       email,
       password: hashedPwd,
+      verificationCode: {
+        createdAt: Date.now(),
+        code: verificationCode,
+      },
     });
-    await registerUser.save();
-    console.log("here");
+    const registeredUser = await registerUser.save();
+    if (!registeredUser) return res.send("user registration failed");
+
+    const context = {
+      name: `${name}`,
+      verificationCode: `${verificationCode}`,
+    };
+
+    await sendMail(email, "Account Verification Mail", "emailVerification", context);
     return res.send("user registered successfully");
   } catch (err) {
     console.log(err);
     return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const verifyEmail = async (req: Request, res: Response) => {
+  let { email, verificationCode } = req.body;
+  verificationCode = parseInt(verificationCode);
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).send("user not found");
+    }
+    if (
+      user.verificationCode.createdAt.getTime() <
+      Date.now() - 5 * 60 * 1000
+    ) {
+      console.log("Verification code expired");
+      return res.status(400).send("invalid verification code");
+    }
+    if (user.verificationCode.code === verificationCode) {
+      await User.findOneAndUpdate(
+        { email },
+        { $set: { verified: true }, $unset: { verificationCode: "" } }
+      );
+
+      return res.send("email verified successfully");
+    } else {
+      console.log("Invalid verification code");
+      return res.status(400).send("invalid verification code");
+    }
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+const resendVerificationCode = async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email || !validator.isEmail(email)) {
+    return res.send("invalid email");
+  }
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).send("user not found");
+    }
+    if (
+      !(user.verificationCode.createdAt.getTime() < Date.now() - 5 * 60 * 1000)
+    ) {
+      return res.status(400).send("verification code  has not expired yet");
+    }
+
+    const verificationCode = generateVerificationCode();
+    user.verificationCode = {
+      createdAt: new Date(),
+      code: verificationCode,
+    };
+    await user.save();
+
+    const context = {
+      name: `${user.name}`,
+      verificationCode: `${verificationCode}`,
+    };
+    await sendMail(email, "Resend Verification Code", "emailVerification", context);
+    return res.send("verification code resent successfully");
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send("Internal server error");
   }
 };
 
@@ -96,6 +220,9 @@ const login = async (req: Request, res: Response) => {
     }
     if (!user.password) {
       return res.status(500).send("User password not set.");
+    }
+    if (user.verified === false) {
+      return res.status(403).send("User email not verified");
     }
 
     const isMatch: boolean = await comparePassword(password, user.password);
@@ -242,7 +369,9 @@ const generateResetToken = async (userId: string) => {
 
 const sendResetEmail = async (email: string, token: string) => {
   const resetLink = `http://localhost:3000/reset-password?token=${token}`;
-  // Send the email using your preferred email service
+
+  await sendMail(email, "Password Reset", "resetEmail", { resetLink });
+
   console.log(
     `Sending password reset email to ${email} with link: ${resetLink}`
   );
@@ -304,4 +433,12 @@ const resetPassword = async (req: Request, res: Response) => {
   }
 };
 
-export { register, login, changePassword, forgotPassword, resetPassword };
+export {
+  register,
+  verifyEmail,
+  login,
+  changePassword,
+  forgotPassword,
+  resetPassword,
+  resendVerificationCode,
+};

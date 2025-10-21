@@ -126,6 +126,8 @@ export const getMessages = async (req: Request, res: Response) => {
       .sort({
         createdAt: 1,
       })
+      .populate("senderId", "name")
+      .populate("receiverId", "name")
       .skip(skip)
       .limit(limit);
 

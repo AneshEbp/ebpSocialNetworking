@@ -61,7 +61,10 @@ export const getPosts = async (req: Request, res: Response) => {
 
     const postList = await Promise.all(
       posts.map(async (post) => {
-        const latestComment = await Comment.find({ postId: post._id })
+        const latestComment = await Comment.find(
+          { postId: post._id },
+          { authorId: 1, content: 1, createdAt: 1 }
+        )
           .sort({ createdAt: -1 })
           .limit(3)
           .populate("authorId", "name");
@@ -69,7 +72,10 @@ export const getPosts = async (req: Request, res: Response) => {
       })
     );
 
-    const totalPosts = await Post.countDocuments();
+    const totalPosts = await Post.countDocuments({
+      ...postFilter,
+      author: userId,
+    });
     const totalPages = Math.ceil(totalPosts / limit);
     const hasNextPage: boolean = totalPages > page;
     const hasPrevPage: boolean = page > 1;
@@ -242,30 +248,52 @@ export const likePost = async (req: Request, res: Response) => {
 export const showFeed = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
+    const searchQuery = (req.query.search as string).trim() || "";
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     let skip = (page - 1) * limit;
 
+    const sortBy = req.query.sortBy as string;
+    const sortOrder = (req.query.sortOrder as string) === "asc" ? 1 : -1;
+
+    const allowedSortFields = ["createdAt", "title", "likesCounter"];
+    allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
+
+    const postFilter: any = {};
+    if (searchQuery) {
+      postFilter.$or = [
+        { title: { $regex: searchQuery, $options: "i" } },
+        { content: { $regex: searchQuery, $options: "i" } },
+      ];
+    }
+
     const userDetails = await User.findById(userId);
+
     if (!userDetails) {
-      const feed = await Post.find({})
+      const feed = await Post.find({ ...postFilter })
         .populate("authorId", "name")
         .skip(skip)
         .limit(limit);
       const totalPosts = await Post.countDocuments();
       const totalPages = Math.ceil(totalPosts / limit);
-      return res
-        .status(200)
-        .json({ feed, currentPage: page, totalPages, totalPosts });
+      const hasNextPage: boolean = totalPages > page;
+      const hasPrevPage: boolean = page > 1;
+      return res.status(200).json({
+        feed,
+        currentPage: page,
+        totalPages,
+        totalPosts,
+        hasNextPage,
+        hasPrevPage,
+      });
     }
+
     const following = userDetails.following;
-    console.log(following);
-    const feed = await Post.find({ author: { $in: following } })
+    const feed = await Post.find({ author: { $in: following }, ...postFilter })
       .populate("author", "name")
       .lean()
       .skip(skip)
       .limit(limit);
-    console.log(feed);
     const totalPosts = await Post.countDocuments({
       authorId: { $in: following },
     });

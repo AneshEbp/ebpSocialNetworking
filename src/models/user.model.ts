@@ -16,6 +16,11 @@ interface IUser extends mongoose.Document {
   resetPasswordToken?: string | null;
   loginIp?: string[];
   whitelist?: string[];
+  verified: boolean;
+  verificationCode: {
+    createdAt: Date;
+    code: Number;
+  };
 }
 
 const userSchema = new mongoose.Schema<IUser>({
@@ -80,7 +85,15 @@ const userSchema = new mongoose.Schema<IUser>({
   whitelist: {
     type: [String],
     default: [],
-  }
+  },
+  verified: {
+    type: Boolean,
+    default: false,
+  },
+  verificationCode: {
+    createdAt: { type: Date, default: Date.now },
+    code: { type: Number },
+  },
 });
 
 const User = mongoose.model("Users", userSchema);
