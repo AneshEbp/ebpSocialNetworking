@@ -232,6 +232,8 @@ const login = async (req: Request, res: Response) => {
     }
 
     const ip = req.ip;
+    const userAgent=req.headers['user-agent'];
+    console.log("User Agent:", userAgent);
     if (!ip) {
       return res.send("IP address not found");
     }
