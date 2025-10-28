@@ -9,8 +9,9 @@ const PORT = process.env.PORT;
 const mongoUrl: string = process.env.MONGO_URL ? process.env.MONGO_URL : "";
 const app = express();
 
-import { confrimPayment } from "./controllers/message.controller.js";
-app.post("/webhook", express.raw({ type: "application/json" }), confrimPayment);
+// import { confrimPayment } from "./controllers/message.controller.js";
+import {webhookHandler} from "./utils/stripe.js"
+app.post("/webhook", express.raw({ type: "application/json" }), webhookHandler);
 
 app.use("/my-uploads", express.static("my-uploads"));
 app.use(cors());
@@ -51,8 +52,15 @@ app.use("/template", templateRoute);
 import { sendUserNotification } from "./controllers/notification.controller.js";
 cron.schedule("0 * * * *", sendUserNotification);
 
+import { inactiveSubscription } from "./controllers/subscription.controller.js";
+cron.schedule("0 0 * * *", inactiveSubscription);
+
 import notificationRoute from "./routes/notification.route.js";
 app.use("/notifications", notificationRoute);
+
+
+import subscriptionRoute from "./routes/subscription.route.js"
+app.use("/subscription", subscriptionRoute);
 
 //Database connection and server start
 const startServer = async () => {

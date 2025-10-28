@@ -7,7 +7,12 @@ import { v4 as uuidv4 } from "uuid";
 import nodemailer from "nodemailer";
 import hbs from "nodemailer-express-handlebars";
 
-const sendMail = async (to: string, subject: string, template: string, context: {}) => {
+const sendMail = async (
+  to: string,
+  subject: string,
+  template: string,
+  context: {}
+) => {
   try {
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
@@ -123,7 +128,12 @@ const register = async (req: Request, res: Response) => {
       verificationCode: `${verificationCode}`,
     };
 
-    await sendMail(email, "Account Verification Mail", "emailVerification", context);
+    await sendMail(
+      email,
+      "Account Verification Mail",
+      "emailVerification",
+      context
+    );
     return res.send("user registered successfully");
   } catch (err) {
     console.log(err);
@@ -191,7 +201,12 @@ const resendVerificationCode = async (req: Request, res: Response) => {
       name: `${user.name}`,
       verificationCode: `${verificationCode}`,
     };
-    await sendMail(email, "Resend Verification Code", "emailVerification", context);
+    await sendMail(
+      email,
+      "Resend Verification Code",
+      "emailVerification",
+      context
+    );
     return res.send("verification code resent successfully");
   } catch (err) {
     console.log(err);
@@ -232,7 +247,8 @@ const login = async (req: Request, res: Response) => {
     }
 
     const ip = req.ip;
-    const userAgent=req.headers['user-agent'];
+    const userAgent = req.headers["user-agent"];
+    const uniqueid = ip + "-" + userAgent;
     console.log("User Agent:", userAgent);
     if (!ip) {
       return res.send("IP address not found");
@@ -240,12 +256,12 @@ const login = async (req: Request, res: Response) => {
     const loginIps = user.loginIp || [];
 
     // Check if IP is already in the list
-    const ipExists = loginIps.includes(ip);
+    const ipExists = loginIps.includes(uniqueid);
     if (!ipExists) {
       if (loginIps.length >= 3) {
         return res.send("Maximum 3 devices are allowed");
       }
-      user?.loginIp?.push(ip); // Add new IP
+      user?.loginIp?.push(uniqueid); // Add new IP
     }
     const jwtsecretkey: string = process.env.JWT_SECRET || "your_jwt_secret";
     const jwtId = uuidv4();
