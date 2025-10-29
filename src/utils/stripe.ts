@@ -2,6 +2,12 @@ import Stripe from "stripe";
 import type { Request, Response } from "express";
 import Message from "../models/message.module.js";
 import SubscriptionModel from "../models/subscription.model.js";
+import NotificationModel from "../models/notification.model.js";
+import UserNotificationModel from "../models/userNotification.model.js";
+import ProcessedEvent from "../models/processedEvent.model.js";
+import mongoose from "mongoose";
+import { sendMail } from "../utils/sendMail.js";
+import User from "../models/user.model.js";
 
 export const createSession = async (
   price: number,
@@ -40,16 +46,49 @@ export const webhookHandler = async (req: Request, res: Response) => {
     console.error("Webhook signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
-
-  if (event.type === "checkout.session.completed") {
-    console.log("i m here");
-    const session = event.data.object as Stripe.Checkout.Session;
-    const userId = session.metadata?.userId as string;
-    if (session.metadata?.purpose === "Unlock Image") {
-      unlockImage(session);
-    } else if (session.metadata?.purpose == "Pay Subscription") {
-      updateUserSubscription(userId);
+  try {
+    const existing = await ProcessedEvent.findOne({ eventId: event.id });
+    if (existing) {
+      console.warn(`Event ${event.id} already processed — skipping.`);
+      return res.status(200).json({ received: true });
     }
+    await ProcessedEvent.create({ eventId: event.id });
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const userId = session.metadata?.userId as string;
+
+      if (session.metadata?.purpose === "Unlock Image") {
+        await unlockImage(session);
+      } else if (session.metadata?.purpose == "Pay Subscription") {
+        const updateSuccess = await updateUserSubscription(userId);
+        if (!updateSuccess) {
+          console.error("Failed to update user subscription");
+          return res.status(500).send("Internal Server Error");
+        }
+        // const userEmail = session.customer_details?.email;
+
+        try {
+          const userDetails = await User.findOne({ _id: userId });
+          const userEmail = userDetails?.email || "";
+          const mailSubject = "Subscription Activated Successfully";
+          const mailTemplate = "subscriptionMail";
+          const mailContext = {
+            name: userDetails?.name || "User",
+            startDate: new Date().toDateString(),
+            endDate: new Date(
+              new Date().setMonth(new Date().getMonth() + 1)
+            ).toDateString(),
+          };
+          await sendMail(userEmail, mailSubject, mailTemplate, mailContext);
+        } catch (error) {
+          console.error("Error sending subscription email:", error);
+        }
+      }
+      return res.status(200).json({ received: true });
+    }
+  } catch (err) {
+    console.error("Error checking for existing event:", err);
+    return res.status(500).send("Internal Server Error");
   }
 };
 
@@ -77,10 +116,11 @@ const unlockImage = async (session: Stripe.Checkout.Session) => {
 };
 
 const updateUserSubscription = async (userId: string) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
-    console.log("i m here");
     const today = new Date();
-    const endDate = new Date(today.getTime()); 
+    const endDate = new Date(today.getTime());
     endDate.setMonth(endDate.getMonth() + 1);
     const subscription = new SubscriptionModel({
       userId,
@@ -88,10 +128,26 @@ const updateUserSubscription = async (userId: string) => {
       endDate,
       status: "active",
     });
-    await subscription.save();
+    await subscription.save({ session });
+
+    const notification = new NotificationModel({
+      message: `Your subscription has been activated successfully! from ${today.toDateString()} to ${endDate.toDateString()}.`,
+    });
+    const notificationResult = await notification.save({ session });
+
+    const userNotification = new UserNotificationModel({
+      userId,
+      notificationId: notificationResult._id,
+    });
+    await userNotification.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
     return true;
   } catch (err) {
     console.error("Error creating subscription:", err);
+    await session.abortTransaction();
+    session.endSession();
     return false;
   }
 };

@@ -11,9 +11,8 @@ http://localhost:3000
 - [User Management](#user-management)
 - [Posts](#posts)
 - [Comments](#comments)
-- [Chat](#chat--messages)
-- [Error Responses](#error-responses)
-- [Rate Limiting](#rate-limiting)
+- [Chat & Messages](#chat--messages)
+- [Notifications](#notifications)
 
 ## Authentication
 

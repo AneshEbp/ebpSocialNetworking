@@ -2,6 +2,8 @@ import express from "express";
 import type { Request, Response } from "express";
 import SubscriptionModel from "../models/subscription.model.js";
 import { createSession } from "../utils/stripe.js";
+import User from "../models/user.model.js";
+import NotificationModel from "../models/notification.model.js";
 
 export const createSubscription = async (req: Request, res: Response) => {
   const userId = req.user.id;
@@ -27,7 +29,8 @@ export const createSubscription = async (req: Request, res: Response) => {
       userId,
       status: "active",
     }).sort({ createdAt: -1 });
-    if (activeSubscription) {
+    console.log("activeSubscription", activeSubscription);
+    if (activeSubscription && activeSubscription.length > 0) {
       return res.send("user is already subscribed");
     }
 
@@ -105,3 +108,32 @@ export const inactiveSubscription = async () => {
     console.error("Error updating subscription statuses:", err);
   }
 };
+
+// export const informUsersAboutExpiringSubscriptions = async () => {
+//   try {
+//     const today = new Date();
+//     const checkDay = new Date(today);
+//     checkDay.setDate(checkDay.getDate() + 7);
+
+//     const subscriptions = await SubscriptionModel.find({
+//       endDate: {
+//         $eq: checkDay,
+//       },
+//       status: "active",
+//     });
+
+//     for (const subscription of subscriptions) {
+//       const user = await User.findById(subscription.userId);
+//       if (user) {
+//         const notification = new NotificationModel({
+//           userId: user._id,
+//           message: "Your subscription is about to expire in 7 days.",
+//           read: false,
+//         });
+//         await notification.save();
+//       }
+//     }
+//   } catch (err) {
+//     console.error("Error sending notifications for expired subscriptions:", err);
+//   }
+// }
