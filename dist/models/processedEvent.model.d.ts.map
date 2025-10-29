@@ -1,0 +1,1 @@
+{"version":3,"file":"processedEvent.model.d.ts","sourceRoot":"","sources":["../../src/models/processedEvent.model.ts"],"names":[],"mappings":"AAAA,OAAO,QAAQ,MAAM,UAAU,CAAC;AAEhC,UAAU,eAAgB,SAAQ,QAAQ,CAAC,QAAQ;IACjD,OAAO,EAAE,MAAM,CAAC;IAChB,SAAS,EAAE,IAAI,CAAC;CACjB;AAOD,QAAA,MAAM,mBAAmB;;;;OAA0E,CAAC;AAEpG,eAAe,mBAAmB,CAAC"}

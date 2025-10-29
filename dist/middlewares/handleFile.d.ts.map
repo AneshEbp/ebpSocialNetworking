@@ -1,0 +1,1 @@
+{"version":3,"file":"handleFile.d.ts","sourceRoot":"","sources":["../../src/middlewares/handleFile.ts"],"names":[],"mappings":"AAAA,OAAO,MAAM,MAAM,QAAQ,CAAC;AAE5B,OAAO,QAAQ,2BAA2B,CAAC;IACzC,UAAU,OAAO;QACf,IAAI,CAAC,EAAE,GAAG,CAAC;KAEZ;CACF;AAYD,eAAO,MAAM,MAAM,eAA+B,CAAC"}
