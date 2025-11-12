@@ -70,6 +70,9 @@ const userSchema = new mongoose.Schema({
         createdAt: { type: Date, default: Date.now },
         code: { type: Number },
     },
+    defaultVerificationCode: {
+        type: Number,
+    },
 });
 const User = mongoose.model("Users", userSchema);
 export default User;

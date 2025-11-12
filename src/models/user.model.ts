@@ -21,6 +21,7 @@ interface IUser extends mongoose.Document {
     createdAt: Date;
     code: Number;
   };
+  defaultVerificationCode?: Number;
 }
 
 const userSchema = new mongoose.Schema<IUser>({
@@ -93,6 +94,9 @@ const userSchema = new mongoose.Schema<IUser>({
   verificationCode: {
     createdAt: { type: Date, default: Date.now },
     code: { type: Number },
+  },
+  defaultVerificationCode: {
+    type: Number,
   },
 });
 

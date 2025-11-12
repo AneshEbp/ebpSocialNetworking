@@ -23,6 +23,7 @@ interface IUser extends mongoose.Document {
         createdAt: Date;
         code: Number;
     };
+    defaultVerificationCode?: Number;
 }
 declare const User: mongoose.Model<IUser, {}, {}, {}, mongoose.Document<unknown, {}, IUser, {}, mongoose.DefaultSchemaOptions> & IUser & Required<{
     _id: unknown;

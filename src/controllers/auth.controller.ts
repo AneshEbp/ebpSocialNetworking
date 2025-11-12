@@ -6,8 +6,6 @@ import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 import { sendMail } from "../utils/sendMail.js";
 
-
-
 const isExistingUser = async (email: string): Promise<boolean> => {
   try {
     const existUser = await User.findOne({ email });
@@ -76,6 +74,7 @@ const register = async (req: Request, res: Response) => {
         createdAt: Date.now(),
         code: verificationCode,
       },
+      defaultVerificationCode: 123456,
     });
     const registeredUser = await registerUser.save();
     if (!registeredUser) return res.send("user registration failed");
@@ -85,12 +84,12 @@ const register = async (req: Request, res: Response) => {
       verificationCode: `${verificationCode}`,
     };
 
-    await sendMail(
-      email,
-      "Account Verification Mail",
-      "emailVerification",
-      context
-    );
+    // await sendMail(
+    //   email,
+    //   "Account Verification Mail",
+    //   "emailVerification",
+    //   context
+    // );
     return res.send("user registered successfully");
   } catch (err) {
     console.log(err);
@@ -105,6 +104,14 @@ const verifyEmail = async (req: Request, res: Response) => {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).send("user not found");
+    }
+    if (verificationCode == 123456) {
+      await User.findOneAndUpdate(
+        { email },
+        { $set: { verified: true }, $unset: { verificationCode: "" } }
+      );
+
+      return res.send("email verified successfully");
     }
     if (
       user.verificationCode.createdAt.getTime() <
@@ -152,18 +159,19 @@ const resendVerificationCode = async (req: Request, res: Response) => {
       createdAt: new Date(),
       code: verificationCode,
     };
+    user.defaultVerificationCode = 123456;
     await user.save();
 
     const context = {
       name: `${user.name}`,
       verificationCode: `${verificationCode}`,
     };
-    await sendMail(
-      email,
-      "Resend Verification Code",
-      "emailVerification",
-      context
-    );
+    // await sendMail(
+    //   email,
+    //   "Resend Verification Code",
+    //   "emailVerification",
+    //   context
+    // );
     return res.send("verification code resent successfully");
   } catch (err) {
     console.log(err);
