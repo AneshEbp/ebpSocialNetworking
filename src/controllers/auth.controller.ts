@@ -43,29 +43,98 @@ const generateVerificationCode = (): Number => {
   return Math.floor(100000 + Math.random() * 900000);
 };
 
+// const register = async (req: Request, res: Response) => {
+//   try {
+//     const { email, name, password } = req.body;
+
+//     if (!validator.isEmail(email)) {
+//       return res.send("invalid email");
+//     }
+//     if (!validator.isLength(name, { min: 3, max: 15 }))
+//       return res.send(
+//         "name must have at least three character and should not exceed 15 character"
+//       );
+
+//     if (!validator.isLength(password, { min: 6, max: 12 }))
+//       return res.send(
+//         "password must have atleast 6 character and should not exceed 12 characters"
+//       );
+
+//     const userExist = await isExistingUser(email);
+//     if (!userExist) {
+//       return res.send("user with email already exists");
+//     }
+//     const hashedPwd = await hashedPassword(password);
+//     const verificationCode = generateVerificationCode();
+//     const registerUser = new User({
+//       name,
+//       email,
+//       password: hashedPwd,
+//       verificationCode: {
+//         createdAt: Date.now(),
+//         code: verificationCode,
+//       },
+//       defaultVerificationCode: 123456,
+//     });
+//     const registeredUser = await registerUser.save();
+//     if (!registeredUser) return res.send("user registration failed");
+
+//     const context = {
+//       name: `${name}`,
+//       verificationCode: `${verificationCode}`,
+//     };
+
+//     // await sendMail(
+//     //   email,
+//     //   "Account Verification Mail",
+//     //   "emailVerification",
+//     //   context
+//     // );
+//     return res.send("user registered successfully");
+//   } catch (err) {
+//     console.log(err);
+//     return res.status(500).json({ message: "Internal server error" });
+//   }
+// };
+
 const register = async (req: Request, res: Response) => {
   try {
     const { email, name, password } = req.body;
 
+    // ✅ Validate email
     if (!validator.isEmail(email)) {
-      return res.send("invalid email");
+      return res.status(400).json({ message: "Invalid email" });
     }
-    if (!validator.isLength(name, { min: 3, max: 15 }))
-      return res.send(
-        "name must have at least three character and should not exceed 15 character"
-      );
 
-    if (!validator.isLength(password, { min: 6, max: 12 }))
-      return res.send(
-        "password must have atleast 6 character and should not exceed 12 characters"
-      );
+    // ✅ Validate name length
+    if (!validator.isLength(name, { min: 3, max: 15 })) {
+      return res.status(400).json({
+        message:
+          "Name must have at least 3 characters and should not exceed 15 characters",
+      });
+    }
 
+    // ✅ Validate password length
+    if (!validator.isLength(password, { min: 6, max: 12 })) {
+      return res.status(400).json({
+        message:
+          "Password must have at least 6 characters and should not exceed 12 characters",
+      });
+    }
+
+    // ✅ Check if user already exists
     const userExist = await isExistingUser(email);
     if (!userExist) {
-      return res.send("user with email already exists");
+      return res
+        .status(409)
+        .json({ message: "User with this email already exists" });
     }
+
+    // ✅ Hash password and generate verification code
     const hashedPwd = await hashedPassword(password);
     const verificationCode = generateVerificationCode();
+
+    // ✅ Create new user
     const registerUser = new User({
       name,
       email,
@@ -76,8 +145,12 @@ const register = async (req: Request, res: Response) => {
       },
       defaultVerificationCode: 123456,
     });
+
     const registeredUser = await registerUser.save();
-    if (!registeredUser) return res.send("user registration failed");
+
+    if (!registeredUser) {
+      return res.status(500).json({ message: "User registration failed" });
+    }
 
     const context = {
       name: `${name}`,
@@ -90,92 +163,275 @@ const register = async (req: Request, res: Response) => {
     //   "emailVerification",
     //   context
     // );
-    return res.send("user registered successfully");
+
+    return res.status(201).json({
+      message: "User registered successfully",
+      data: {
+        id: registeredUser._id,
+        name: registeredUser.name,
+        email: registeredUser.email,
+      },
+    });
   } catch (err) {
-    console.log(err);
+    console.error(err);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
 
+// const verifyEmail = async (req: Request, res: Response) => {
+//   let { email, verificationCode } = req.body;
+//   verificationCode = parseInt(verificationCode);
+//   try {
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       return res.status(404).send("user not found");
+//     }
+//     if (verificationCode == 123456) {
+//       await User.findOneAndUpdate(
+//         { email },
+//         { $set: { verified: true }, $unset: { verificationCode: "" } }
+//       );
+
+//       return res.send("email verified successfully");
+//     }
+//     if (
+//       user.verificationCode.createdAt.getTime() <
+//       Date.now() - 5 * 60 * 1000
+//     ) {
+//       console.log("Verification code expired");
+//       return res.status(400).send("invalid verification code");
+//     }
+//     if (user.verificationCode.code === verificationCode) {
+//       await User.findOneAndUpdate(
+//         { email },
+//         { $set: { verified: true }, $unset: { verificationCode: "" } }
+//       );
+
+//       return res.send("email verified successfully");
+//     } else {
+//       console.log("Invalid verification code");
+//       return res.status(400).send("invalid verification code");
+//     }
+//   } catch (err) {
+//     console.log(err);
+//   }
+// };
+
 const verifyEmail = async (req: Request, res: Response) => {
   let { email, verificationCode } = req.body;
   verificationCode = parseInt(verificationCode);
+
   try {
     const user = await User.findOne({ email });
+
+    // ✅ Check if user exists
     if (!user) {
-      return res.status(404).send("user not found");
+      return res.status(404).json({ message: "User not found" });
     }
-    if (verificationCode == 123456) {
+
+    // ✅ Handle default verification code (for testing/admin)
+    if (verificationCode === 123456) {
       await User.findOneAndUpdate(
         { email },
         { $set: { verified: true }, $unset: { verificationCode: "" } }
       );
 
-      return res.send("email verified successfully");
+      return res.status(200).json({ message: "Email verified successfully" });
     }
+
+    // ✅ Check for expired code (older than 5 minutes)
     if (
-      user.verificationCode.createdAt.getTime() <
+      user.verificationCode?.createdAt.getTime() <
       Date.now() - 5 * 60 * 1000
     ) {
       console.log("Verification code expired");
-      return res.status(400).send("invalid verification code");
+      return res.status(400).json({ message: "Verification code expired" });
     }
-    if (user.verificationCode.code === verificationCode) {
+
+    // ✅ Validate verification code match
+    if (user.verificationCode?.code === verificationCode) {
       await User.findOneAndUpdate(
         { email },
         { $set: { verified: true }, $unset: { verificationCode: "" } }
       );
 
-      return res.send("email verified successfully");
+      return res.status(200).json({ message: "Email verified successfully" });
     } else {
       console.log("Invalid verification code");
-      return res.status(400).send("invalid verification code");
+      return res.status(400).json({ message: "Invalid verification code" });
     }
   } catch (err) {
-    console.log(err);
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+// const resendVerificationCode = async (req: Request, res: Response) => {
+//   const { email } = req.body;
+
+//   if (!email || !validator.isEmail(email)) {
+//     return res.send("invalid email");
+//   }
+
+//   try {
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       return res.status(404).send("user not found");
+//     }
+//     if (
+//       !(user.verificationCode.createdAt.getTime() < Date.now() - 5 * 60 * 1000)
+//     ) {
+//       return res.status(400).send("verification code  has not expired yet");
+//     }
+
+//     const verificationCode = generateVerificationCode();
+//     user.verificationCode = {
+//       createdAt: new Date(),
+//       code: verificationCode,
+//     };
+//     user.defaultVerificationCode = 123456;
+//     await user.save();
+
+//     const context = {
+//       name: `${user.name}`,
+//       verificationCode: `${verificationCode}`,
+//     };
+//     // await sendMail(
+//     //   email,
+//     //   "Resend Verification Code",
+//     //   "emailVerification",
+//     //   context
+//     // );
+//     return res.send("verification code resent successfully");
+//   } catch (err) {
+//     console.log(err);
+//     return res.status(500).send("Internal server error");
+//   }
+// };
+
+// const login = async (req: Request, res: Response) => {
+//   const { email, password } = req.body;
+
+//   if (!validator.isEmail(email)) {
+//     return res.send("invalid email");
+//   }
+
+//   if (!validator.isLength(password, { min: 6, max: 12 })) {
+//     return res.send(
+//       "password must have atleast 6 character and should not exceed 12 character"
+//     );
+//   }
+
+//   try {
+//     const user = await User.findOne({ email });
+
+//     if (!user) {
+//       return res.send("invalid credentials");
+//     }
+//     if (!user.password) {
+//       return res.status(500).send("User password not set.");
+//     }
+//     if (user.verified === false) {
+//       return res.status(403).send("User email not verified");
+//     }
+
+//     const isMatch: boolean = await comparePassword(password, user.password);
+
+//     if (!isMatch) {
+//       return res.send("invalid credentials");
+//     }
+
+//     const ip = req.ip;
+//     const userAgent = req.headers["user-agent"];
+//     const uniqueid = ip + "-" + userAgent;
+//     console.log("User Agent:", userAgent);
+//     if (!ip) {
+//       return res.send("IP address not found");
+//     }
+//     const loginIps = user.loginIp || [];
+
+//     // Check if IP is already in the list
+//     const ipExists = loginIps.includes(uniqueid);
+//     if (!ipExists) {
+//       if (loginIps.length >= 3) {
+//         return res.send("Maximum 3 devices are allowed");
+//       }
+//       user?.loginIp?.push(uniqueid); // Add new IP
+//     }
+//     const jwtsecretkey: string = process.env.JWT_SECRET || "your_jwt_secret";
+//     const jwtId = uuidv4();
+//     const token: string = jwt.sign({ id: user._id, jwtId }, jwtsecretkey, {
+//       expiresIn: "7 day",
+//     });
+//     user.whitelist?.push(jwtId);
+//     await user.save();
+//     const data = {
+//       token,
+//       id: user._id,
+//       name: user.name,
+//       email: user.email,
+//     };
+//     res.json({ data, message: "login successful" });
+//   } catch (err) {
+//     console.log(err);
+//     res.status(500).send("internal server error");
+//   }
+// };
 
 const resendVerificationCode = async (req: Request, res: Response) => {
   const { email } = req.body;
 
+  // ✅ Validate email
   if (!email || !validator.isEmail(email)) {
-    return res.send("invalid email");
+    return res.status(400).json({ message: "Invalid email" });
   }
 
   try {
     const user = await User.findOne({ email });
+
+    // ✅ Check if user exists
     if (!user) {
-      return res.status(404).send("user not found");
-    }
-    if (
-      !(user.verificationCode.createdAt.getTime() < Date.now() - 5 * 60 * 1000)
-    ) {
-      return res.status(400).send("verification code  has not expired yet");
+      return res.status(404).json({ message: "User not found" });
     }
 
+    // ✅ Check if old verification code has expired (5 min)
+    if (
+      !(user.verificationCode?.createdAt.getTime() < Date.now() - 5 * 60 * 1000)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Verification code has not expired yet" });
+    }
+
+    // ✅ Generate and update verification code
     const verificationCode = generateVerificationCode();
     user.verificationCode = {
       createdAt: new Date(),
       code: verificationCode,
     };
     user.defaultVerificationCode = 123456;
+
     await user.save();
 
+    // ✅ Prepare email context
     const context = {
-      name: `${user.name}`,
-      verificationCode: `${verificationCode}`,
+      name: user.name,
+      verificationCode: verificationCode.toString(),
     };
+
     // await sendMail(
     //   email,
     //   "Resend Verification Code",
     //   "emailVerification",
     //   context
     // );
-    return res.send("verification code resent successfully");
+
+    return res
+      .status(200)
+      .json({ message: "Verification code resent successfully" });
   } catch (err) {
-    console.log(err);
-    return res.status(500).send("Internal server error");
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -183,93 +439,141 @@ const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   if (!validator.isEmail(email)) {
-    return res.send("invalid email");
+    return res.status(400).json({ message: "Invalid email" });
   }
 
   if (!validator.isLength(password, { min: 6, max: 12 })) {
-    return res.send(
-      "password must have atleast 6 character and should not exceed 12 character"
-    );
+    return res.status(400).json({
+      message:
+        "Password must have at least 6 characters and should not exceed 12 characters",
+    });
   }
 
   try {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.send("invalid credentials");
+      return res.status(401).json({ message: "Invalid credentials" });
     }
+
     if (!user.password) {
-      return res.status(500).send("User password not set.");
+      return res.status(500).json({ message: "User password not set" });
     }
+
     if (user.verified === false) {
-      return res.status(403).send("User email not verified");
+      return res.status(403).json({ message: "User email not verified" });
     }
 
     const isMatch: boolean = await comparePassword(password, user.password);
 
     if (!isMatch) {
-      return res.send("invalid credentials");
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const ip = req.ip;
     const userAgent = req.headers["user-agent"];
     const uniqueid = ip + "-" + userAgent;
-    console.log("User Agent:", userAgent);
-    if (!ip) {
-      return res.send("IP address not found");
-    }
-    const loginIps = user.loginIp || [];
 
-    // Check if IP is already in the list
+    if (!ip) {
+      return res.status(400).json({ message: "IP address not found" });
+    }
+
+    const loginIps = user.loginIp || [];
     const ipExists = loginIps.includes(uniqueid);
+
     if (!ipExists) {
       if (loginIps.length >= 3) {
-        return res.send("Maximum 3 devices are allowed");
+        return res
+          .status(403)
+          .json({ message: "Maximum 3 devices are allowed" });
       }
-      user?.loginIp?.push(uniqueid); // Add new IP
+      user?.loginIp?.push(uniqueid);
     }
+
     const jwtsecretkey: string = process.env.JWT_SECRET || "your_jwt_secret";
     const jwtId = uuidv4();
     const token: string = jwt.sign({ id: user._id, jwtId }, jwtsecretkey, {
-      expiresIn: "7 day",
+      expiresIn: "7d",
     });
+
     user.whitelist?.push(jwtId);
     await user.save();
-    res.json({ token, message: "login successful" });
+
+    const data = {
+      token,
+      id: user._id,
+      name: user.name,
+      email: user.email,
+    };
+
+    return res.status(200).json({ message: "Login successful", data });
   } catch (err) {
-    console.log(err);
-    res.status(500).send("internal server error");
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+// export const logout = async (req: Request, res: Response) => {
+//   try {
+//     const userId = req.user?.id;
+//     const jwtId = req.user?.jwtId;
+
+//     if (!userId || !jwtId) {
+//       return res.status(401).send("user not found");
+//     }
+
+//     const user = await User.findById(userId);
+//     if (!user) {
+//       return res.status(404).send("user not found");
+//     }
+
+//     if (!user.loginIp) {
+//       user.loginIp = [];
+//     }
+//     user.loginIp = user.loginIp.filter((ip) => ip !== req.ip);
+//     if (!user.whitelist) {
+//       user.whitelist = [];
+//     }
+//     user.whitelist = user.whitelist.filter((id) => id !== jwtId);
+//     await user.save();
+
+//     res.status(200).send("logout successful");
+//   } catch (err) {
+//     console.log(err);
+//     res.status(500).send("internal server error");
+//   }
+// };
 
 export const logout = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
     const jwtId = req.user?.jwtId;
 
+    // ✅ Check for valid authentication
     if (!userId || !jwtId) {
-      return res.status(401).send("user not found");
+      return res.status(401).json({ message: "User not authenticated" });
     }
 
+    // ✅ Find user
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).send("user not found");
+      return res.status(404).json({ message: "User not found" });
     }
 
-    if (!user.loginIp) {
-      user.loginIp = [];
-    }
+    // ✅ Remove current device IP
+    if (!user.loginIp) user.loginIp = [];
     user.loginIp = user.loginIp.filter((ip) => ip !== req.ip);
-    if (!user.whitelist) {
-      user.whitelist = [];
-    }
+
+    // ✅ Remove JWT from whitelist
+    if (!user.whitelist) user.whitelist = [];
     user.whitelist = user.whitelist.filter((id) => id !== jwtId);
+
     await user.save();
 
-    res.status(200).send("logout successful");
+    return res.status(200).json({ message: "Logout successful" });
   } catch (err) {
-    console.log(err);
-    res.status(500).send("internal server error");
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -297,45 +601,98 @@ export const logoutFromAllDevices = async (req: Request, res: Response) => {
   }
 };
 
+// const changePassword = async (req: Request, res: Response) => {
+//   try {
+//     const { oldPassword, newPassword } = req.body;
+//     const userId = req.user?.id;
+
+//     if (!validator.isLength(oldPassword, { min: 6, max: 12 })) {
+//       return res.send(
+//         "password must have atleast 6 character and should not exceed 12 character"
+//       );
+//     }
+//     if (!validator.isLength(newPassword, { min: 6, max: 12 })) {
+//       return res.send(
+//         "password must have atleast 6 character and should not exceed 12 character"
+//       );
+//     }
+//     if (!userId) {
+//       return res.status(401).send("user not found");
+//     }
+
+//     const user = await User.findById(userId);
+//     if (!user) {
+//       return res.status(404).send("user not found");
+//     }
+//     if (!user.password) {
+//       return res.status(500).send("User password not set.");
+//     }
+//     const isMatch = await comparePassword(oldPassword, user.password);
+//     if (!isMatch) {
+//       return res.status(401).send("old password is incorrect");
+//     }
+
+//     const hashedNewPassword = await hashedPassword(newPassword);
+//     user.password = hashedNewPassword;
+//     await user.save();
+
+//     return res.send("password changed successfully");
+//   } catch (err) {
+//     console.log(err);
+//     return res.status(500).send("internal server error");
+//   }
+// };
+
 const changePassword = async (req: Request, res: Response) => {
   try {
     const { oldPassword, newPassword } = req.body;
     const userId = req.user?.id;
 
+    // ✅ Validate passwords
     if (!validator.isLength(oldPassword, { min: 6, max: 12 })) {
-      return res.send(
-        "password must have atleast 6 character and should not exceed 12 character"
-      );
-    }
-    if (!validator.isLength(newPassword, { min: 6, max: 12 })) {
-      return res.send(
-        "password must have atleast 6 character and should not exceed 12 character"
-      );
-    }
-    if (!userId) {
-      return res.status(401).send("user not found");
+      return res.status(400).json({
+        message:
+          "Old password must have at least 6 characters and should not exceed 12 characters",
+      });
     }
 
+    if (!validator.isLength(newPassword, { min: 6, max: 12 })) {
+      return res.status(400).json({
+        message:
+          "New password must have at least 6 characters and should not exceed 12 characters",
+      });
+    }
+
+    // ✅ Check authentication
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+
+    // ✅ Find user
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).send("user not found");
-    }
-    if (!user.password) {
-      return res.status(500).send("User password not set.");
-    }
-    const isMatch = await comparePassword(oldPassword, user.password);
-    if (!isMatch) {
-      return res.status(401).send("old password is incorrect");
+      return res.status(404).json({ message: "User not found" });
     }
 
+    if (!user.password) {
+      return res.status(500).json({ message: "User password not set" });
+    }
+
+    // ✅ Verify old password
+    const isMatch = await comparePassword(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Old password is incorrect" });
+    }
+
+    // ✅ Hash and save new password
     const hashedNewPassword = await hashedPassword(newPassword);
     user.password = hashedNewPassword;
     await user.save();
 
-    return res.send("password changed successfully");
+    return res.status(200).json({ message: "Password changed successfully" });
   } catch (err) {
-    console.log(err);
-    return res.status(500).send("internal server error");
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
