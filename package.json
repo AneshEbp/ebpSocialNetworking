@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "NODE_OPTIONS='--loader ts-node/esm' nodemon src/server.ts",
-    "build": "tsc  && node dist/server.js",
+    "build": "tsc && npm run copy-views",
+    "copy-views": "cp -r views dist/views",
     "start": "node dist/server.js",
     "prod": "tsc  && node dist/server.js",
     "watch": "tsc --watch"
