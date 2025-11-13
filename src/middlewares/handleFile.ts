@@ -1,22 +1,42 @@
+import dotenv from "dotenv";
 import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
+import type { UploadApiResponse } from "cloudinary";
+import fs from "fs";
 
-declare module "express-serve-static-core" {
-  interface Request {
-    user?: any;
-    // file?: any;
-  }
-}
+dotenv.config();
 
-const storage: multer.StorageEngine = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "my-uploads");
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + "-" + uniqueSuffix);
-  },
+// 🔹 Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME as string,
+  api_key: process.env.CLOUDINARY_API_KEY as string,
+  api_secret: process.env.CLOUDINARY_API_SECRET as string,
 });
 
-export const upload = multer({ storage: storage });
+// 🔹 Use multer's local storage (temporary)
+const upload = multer({ dest: "uploads/" });
 
+// 🔹 Utility: upload to Cloudinary manually
+export const uploadToCloudinary = async (
+  localPath: string
+): Promise<string> => {
+  try {
+    const result: UploadApiResponse = await cloudinary.uploader.upload(
+      localPath,
+      {
+        folder: "posts",
+        transformation: [{ width: 1000, crop: "limit", quality: "auto" }],
+      }
+    );
 
+    // Remove local temp file after upload
+    fs.unlinkSync(localPath);
+    return result.secure_url;
+  } catch (error) {
+    // Ensure cleanup on failure
+    if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+    throw error;
+  }
+};
+
+export { upload };

@@ -27,9 +27,8 @@ export const createSession = async (
       },
     ],
     mode: "payment",
-    success_url: `https://northeastwardly-subcultrate-perla.ngrok-free.dev/payment-success`,
-    cancel_url:
-      "https://northeastwardly-subcultrate-perla.ngrok-free.dev/payment-cancel",
+    success_url: `https://ebpsocialnetworking.onrender.com/payment-success`,
+    cancel_url: "https://ebpsocialnetworking.onrender.com/payment-cancel",
     metadata,
   });
   return session.url;

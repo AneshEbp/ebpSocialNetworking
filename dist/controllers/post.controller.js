@@ -3,6 +3,7 @@ import fs from "fs";
 import Comment from "../models/comment.model.js";
 import validator from "validator";
 import User from "../models/user.model.js";
+import { uploadToCloudinary } from "../middlewares/handleFile.js";
 export const createPost = async (req, res) => {
     try {
         const { title, content } = req.body;
@@ -11,10 +12,11 @@ export const createPost = async (req, res) => {
         if (!title || !content || !image) {
             return res.status(400).send("All fields are required");
         }
+        const imageUrl = await uploadToCloudinary(image);
         if (!author) {
             return res.status(401).send("User not authorized");
         }
-        const newPost = new Post({ title, content, author, image });
+        const newPost = new Post({ title, content, author, image: imageUrl });
         await newPost.save();
         return res
             .status(201)
@@ -92,7 +94,6 @@ export const getPostById = async (req, res) => {
 };
 export const updatePost = async (req, res) => {
     try {
-        console.log("here");
         const postId = req.params.id;
         const { title, content } = req.body;
         console.log(title, content);
@@ -104,13 +105,14 @@ export const updatePost = async (req, res) => {
         if (image) {
             try {
                 // Delete the old image if it exists
-                if (post.image) {
-                    if (fs.existsSync(post.image)) {
-                        fs.unlinkSync(post.image);
-                        console.log("Old image deleted successfully.");
-                    }
-                }
-                post.image = image;
+                // if (post.image) {
+                //   if (fs.existsSync(post.image)) {
+                //     fs.unlinkSync(post.image);
+                //     console.log("Old image deleted successfully.");
+                //   }
+                // }
+                const imageUrl = await uploadToCloudinary(image);
+                post.image = imageUrl;
             }
             catch (err) {
                 console.error("Error deleting old image:", err);

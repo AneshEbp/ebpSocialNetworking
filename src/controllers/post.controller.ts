@@ -4,6 +4,7 @@ import fs from "fs";
 import Comment from "../models/comment.model.js";
 import validator from "validator";
 import User from "../models/user.model.js";
+import { uploadToCloudinary } from "../middlewares/handleFile.js";
 
 export const createPost = async (req: Request, res: Response) => {
   try {
@@ -14,11 +15,12 @@ export const createPost = async (req: Request, res: Response) => {
     if (!title || !content || !image) {
       return res.status(400).send("All fields are required");
     }
+    const imageUrl = await uploadToCloudinary(image);
     if (!author) {
       return res.status(401).send("User not authorized");
     }
 
-    const newPost = new Post({ title, content, author, image });
+    const newPost = new Post({ title, content, author, image: imageUrl });
     await newPost.save();
 
     return res
@@ -111,7 +113,6 @@ export const getPostById = async (req: Request, res: Response) => {
 
 export const updatePost = async (req: Request, res: Response) => {
   try {
-    console.log("here");
     const postId = req.params.id;
     const { title, content }: { title: string; content: string } = req.body;
     console.log(title, content);
@@ -125,13 +126,14 @@ export const updatePost = async (req: Request, res: Response) => {
     if (image) {
       try {
         // Delete the old image if it exists
-        if (post.image) {
-          if (fs.existsSync(post.image)) {
-            fs.unlinkSync(post.image);
-            console.log("Old image deleted successfully.");
-          }
-        }
-        post.image = image;
+        // if (post.image) {
+        //   if (fs.existsSync(post.image)) {
+        //     fs.unlinkSync(post.image);
+        //     console.log("Old image deleted successfully.");
+        //   }
+        // }
+        const imageUrl = await uploadToCloudinary(image);
+        post.image = imageUrl;
       } catch (err) {
         console.error("Error deleting old image:", err);
         return res.status(500).send("Failed to update image.");
