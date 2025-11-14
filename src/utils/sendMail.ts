@@ -48,7 +48,55 @@
 //   }
 // };
 
+// import nodemailer from "nodemailer";
+// import hbs from "nodemailer-express-handlebars";
+
+// export const sendMail = async (
+//   to: string,
+//   subject: string,
+//   template: string,
+//   context: {}
+// ) => {
+//   try {
+//     const transporter = nodemailer.createTransport({
+//       host: "smtp.sendgrid.net",
+//       port: 587, // recommended by SendGrid
+//       secure: false, // must be false for port 587
+//       auth: {
+//         user: "apikey", // literally the word 'apikey'
+//         pass: process.env.SG_APIKEY, // your SendGrid API key
+//       },
+//     });
+
+//     const hbsOptions = {
+//       viewEngine: {
+//         extname: ".hbs",
+//         partialsDir: "./views/partials",
+//         layoutsDir: "./views/layouts",
+//       },
+//       viewPath: "./views",
+//       extName: ".handlebars",
+//     };
+
+//     transporter.use("compile", hbs(hbsOptions));
+
+//     const mailOptions = {
+//       from: process.env.SENDGRID_FROM_EMAIL, // MUST be a verified sender in SendGrid
+//       to,
+//       subject,
+//       template,
+//       context,
+//     };
+
+//     await transporter.sendMail(mailOptions);
+//     // console.log("Email sent successfully (SendGrid)");
+//   } catch (error) {
+//     console.error("Error sending email:", error);
+//   }
+// };
+
 import nodemailer from "nodemailer";
+import sgTransport from "nodemailer-sendgrid";
 import hbs from "nodemailer-express-handlebars";
 
 export const sendMail = async (
@@ -58,15 +106,15 @@ export const sendMail = async (
   context: {}
 ) => {
   try {
-    const transporter = nodemailer.createTransport({
-      host: "smtp.sendgrid.net",
-      port: 587, // recommended by SendGrid
-      secure: false, // must be false for port 587
-      auth: {
-        user: "apikey", // literally the word 'apikey'
-        pass: process.env.SG_APIKEY, // your SendGrid API key
-      },
-    });
+    let apiKey = process.env.SG_APIKEY;
+    if (!apiKey) {
+      throw new Error("Missing SendGrid API Key (SG_APIKEY)");
+    }
+    const transporter: nodemailer.Transporter = nodemailer.createTransport(
+      sgTransport({
+        apiKey, // SendGrid API Key
+      })
+    );
 
     const hbsOptions = {
       viewEngine: {
@@ -81,7 +129,7 @@ export const sendMail = async (
     transporter.use("compile", hbs(hbsOptions));
 
     const mailOptions = {
-      from: process.env.SENDGRID_FROM_EMAIL, // MUST be a verified sender in SendGrid
+      from: process.env.SENDGRID_FROM_EMAIL, // must be verified in SendGrid
       to,
       subject,
       template,
@@ -89,7 +137,7 @@ export const sendMail = async (
     };
 
     await transporter.sendMail(mailOptions);
-    // console.log("Email sent successfully (SendGrid)");
+    console.log("Email sent successfully with SendGrid API");
   } catch (error) {
     console.error("Error sending email:", error);
   }
