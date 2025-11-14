@@ -157,12 +157,12 @@ const register = async (req: Request, res: Response) => {
       verificationCode: `${verificationCode}`,
     };
 
-    // await sendMail(
-    //   email,
-    //   "Account Verification Mail",
-    //   "emailVerification",
-    //   context
-    // );
+    await sendMail(
+      email,
+      "Account Verification Mail",
+      "emailVerification",
+      context
+    );
 
     return res.status(201).json({
       message: "User registered successfully",
@@ -419,12 +419,12 @@ const resendVerificationCode = async (req: Request, res: Response) => {
       verificationCode: verificationCode.toString(),
     };
 
-    // await sendMail(
-    //   email,
-    //   "Resend Verification Code",
-    //   "emailVerification",
-    //   context
-    // );
+    await sendMail(
+      email,
+      "Resend Verification Code",
+      "emailVerification",
+      context
+    );
 
     return res
       .status(200)
