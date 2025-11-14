@@ -136,12 +136,7 @@ const register = async (req, res) => {
             name: `${name}`,
             verificationCode: `${verificationCode}`,
         };
-        // await sendMail(
-        //   email,
-        //   "Account Verification Mail",
-        //   "emailVerification",
-        //   context
-        // );
+        await sendMail(email, "Account Verification Mail", "emailVerification", context);
         return res.status(201).json({
             message: "User registered successfully",
             data: {
@@ -356,12 +351,7 @@ const resendVerificationCode = async (req, res) => {
             name: user.name,
             verificationCode: verificationCode.toString(),
         };
-        // await sendMail(
-        //   email,
-        //   "Resend Verification Code",
-        //   "emailVerification",
-        //   context
-        // );
+        await sendMail(email, "Resend Verification Code", "emailVerification", context);
         return res
             .status(200)
             .json({ message: "Verification code resent successfully" });
